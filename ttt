@@ -1,0 +1,40 @@
+<dependency>
+    <groupId>com.github.javafaker</groupId>
+    <artifactId>javafaker</artifactId>
+    <version>1.0.2</version>
+   <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>uk.co.jemos.podam</groupId>
+    <artifactId>podam</artifactId>
+    <version>7.2.3.RELEASE</version>
+    <scope>test</scope>
+</dependency>
+
+public static void whenBothifyCalled_checkPatternMatches() throws Exception {
+
+FakeValuesService fakeValuesService = new FakeValuesService(new Locale("en-GB"), new RandomService());
+String email = fakeValuesService.bothify("????##@gmail.com");
+Matcher emailMatcher = Pattern.compile("\\w{4}\\d{2}@gmail.com").matcher(email);
+
+}
+
+public static void givenValidService_whenRegexifyCalled_checkPattern() throws Exception {
+
+FakeValuesService fakeValuesService = new FakeValuesService(new Locale("en-GB"), new RandomService());
+
+String alphaNumericString = fakeValuesService.regexify("[a-z1-9]{10,16}");
+Matcher alphaNumericMatcher = Pattern.compile("[a-z1-9]{10}").matcher(alphaNumericString);
+
+PodamFactory factory = new PodamFactoryImpl();
+GetSessionRequest myPojo = factory.manufacturePojo(GetSessionRequest.class);
+alphaNumericString.toString();
+
+Faker faker = new Faker();
+
+String name = faker.name().fullName(); // Miss Samanta Schmidt
+String firstName = faker.name().firstName(); // Emory
+String lastName = faker.name().lastName(); // Barton
+
+String streetAddress = faker.address().streetAddress();
+}
