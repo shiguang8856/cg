@@ -1,0 +1,251 @@
+import com.github.wnameless.json.flattener.JsonFlattener;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+public class JU {
+   public static final String ARRAY_SYMBOL_REGEX = "(\\[\\d+\\])";
+   public static final Pattern ARRAY_SYMBOL_PATTERN = Pattern.compile(ARRAY_SYMBOL_REGEX);
+   public static void main(String[] args) throws IOException {
+      String json1 = FileUtils.readFileToString(new File("json1.json"));
+      String json2 = FileUtils.readFileToString(new File("json2.json"));
+      System.out.println(oooOOloOOOOl(json1, json2));
+   }
+   public static boolean oooOOloOOOOl(String json1, String json2){
+      Map<String, Object> map1 = JsonFlattener.flattenAsMap(json1);
+      Map<String, Object> map2 = JsonFlattener.flattenAsMap(json2);
+      return lll111lllooOOOll1ll(map1, map2);
+   }
+   public static boolean lll111lllooOOOll1ll(Map map1, Map map2){
+      List<String> keys1 = new ArrayList<>(map1.keySet());
+      boolean b = true;
+      List<EntryMatch> entryMatchList = new ArrayList<>();
+      for(String key1 : keys1){
+         List<String> matchedKeys = findKeyInTargetMap(key1, map2);
+         Object val = map1.get(key1);
+         AbstractMap.SimpleEntry srcEntry = new AbstractMap.SimpleEntry(key1, val);
+         List matchedEntries = findMatchedEntry(matchedKeys, val, map2);
+         EntryMatch entryMatch = new EntryMatch();
+         entryMatch.setSrcEntry(srcEntry);
+         entryMatch.setTargetEntries(matchedEntries);
+         System.out.println(String.format("Entry %s matched entry %s",srcEntry, matchedEntries));
+         if(CollectionUtils.isEmpty(matchedEntries)){
+            b = false;
+            System.out.println(String.format("failed on match entry by path %s!!!!!!", key1));
+         }
+         entryMatchList.add(entryMatch);
+      }
+      if(b) {
+         //compare if matched nodes are in correct node index
+         Map<Map.Entry, EntryMatch> entryMatchMap = entryMatchList.stream()
+               .collect(Collectors.toMap(e -> e.getSrcEntry(), e -> e,
+                     (e1, e2) -> e1));
+         Map<String, List<Map.Entry>> srcArraypathInSameGroup = getSameGroupArrayPathMap(
+               map1);
+         System.out.println("array path groups are");
+         srcArraypathInSameGroup.keySet().forEach(System.out::println);
+         Set<Map.Entry<String, List<Map.Entry>>> srcArraypathGroupSet = srcArraypathInSameGroup
+               .entrySet();
+         for (Map.Entry<String, List<Map.Entry>> entry : srcArraypathGroupSet) {
+            String arraypathGroup = entry.getKey();
+            List<Map.Entry> srcEntriesGroup = entry.getValue();
+            List<List<Map.Entry>> matchedEntriesGroup = new ArrayList();
+            for (Map.Entry srcEntry : srcEntriesGroup) {
+               EntryMatch entryMatch = entryMatchMap
+                     .getOrDefault(srcEntry, null);
+               if (!Objects.isNull(entryMatch)) {
+                  matchedEntriesGroup.add(entryMatch.getTargetEntries());
+               }
+            }
+            String samepath = findSamePath(arraypathGroup,
+                  matchedEntriesGroup);
+            if (StringUtils.isEmpty(samepath)) {
+               b = false;
+               System.out.println(String.format("failed on find node path %s!!!!!!",
+                     arraypathGroup));
+            }else{
+               System.out.println(String.format("find same path %s for array path group %s",
+                     samepath, arraypathGroup));
+            }
+         }
+      }
+      return b;
+   }
+   public static boolean needFindSamePath(String path){
+      if(!path.trim().endsWith("]")){
+         return true;
+      }else{
+         Matcher matcher = ARRAY_SYMBOL_PATTERN.matcher(path);
+         int count = matcher.groupCount();
+         if(count>2){
+            return true;
+         }
+      }
+      return false;
+   }
+   public static String findSamePath(String arraypathGroup, List<List<Map.Entry>> matchedEntriesGroup){
+      String samePath = null;
+      if(CollectionUtils.isEmpty(matchedEntriesGroup)){
+         return arraypathGroup;
+      }
+      if(matchedEntriesGroup.size()==1){
+         return arraypathGroup;
+      }
+      String regex = arraypathGroup.replaceAll("(\\[\\d+\\])","\\\\[\\\\d+\\\\]");
+      if(!regex.endsWith("]")){
+         regex = regex+"\\[\\d+\\]";
+      }
+      regex = "("+regex+")";
+      Pattern pattern = Pattern.compile(regex);
+      List<Map.Entry> firstMatchedEntries = matchedEntriesGroup.get(0);
+      boolean foundAnyInAll = false;
+      for(Map.Entry matchedEntry : firstMatchedEntries){
+         String entryKey = matchedEntry.getKey().toString();
+         if(!needFindSamePath(entryKey)){
+            return arraypathGroup;
+         }
+         Matcher matcher = pattern.matcher(entryKey);
+         String arrayPath = null;
+         if(matcher.find()){
+            arrayPath = matcher.group();
+         }
+         for(int j=1;j<matchedEntriesGroup.size();j++){
+            List<Map.Entry> list = matchedEntriesGroup.get(j);
+            boolean foundAny = false;
+            for(Map.Entry anotherEntry : list){
+               String anotherEntryKey = anotherEntry.toString();
+               Matcher anotherMatcher = pattern.matcher(anotherEntryKey);
+               String anotherArrayPath = null;
+               if(anotherMatcher.find()){
+                  anotherArrayPath = anotherMatcher.group();
+               }
+               if(arrayPath.equalsIgnoreCase(anotherArrayPath)){
+                  foundAny = true;
+                  samePath = anotherArrayPath;
+                  if(j==matchedEntriesGroup.size()-1){
+                     foundAnyInAll = true;
+                  }
+                  break;
+               }
+            }
+            if(!foundAny){
+               j = matchedEntriesGroup.size();
+            }
+         }
+      }
+      if(!foundAnyInAll){
+         return null;
+      }
+      return samePath;
+   }
+   public static List<String> findKeyInTargetMap(String srcKey, Map map){
+      List<String> list = new ArrayList<>();
+      boolean hasArray = false;
+      if(srcKey.contains("[") && srcKey.contains("]")){
+         hasArray = true;
+      }
+      if(!hasArray){
+         if(map.containsKey(srcKey)){
+            list.add(srcKey);
+            return list;
+         }
+      }
+      List<String> keys = new ArrayList<>(map.keySet());
+      String regex = "^"+srcKey.replaceAll("\\[\\d+\\]","\\\\[\\\\d+\\\\]")+"$";
+      Pattern p = Pattern.compile(regex);
+      for(String key : keys){
+         Matcher matcher = p.matcher(key);
+         if(matcher.matches()){
+            list.add(key);
+         }
+      }
+      return list;
+   }
+   public static List<AbstractMap.SimpleEntry> findMatchedEntry(List<String> possibleKeys, Object val, Map map){
+      List<AbstractMap.SimpleEntry> list = new ArrayList<>();
+      if(CollectionUtils.isEmpty(possibleKeys)){
+         return list;
+      }
+      for(String key : possibleKeys){
+         Object targetVal = map.get(key);
+         if(isExpect(val, targetVal)){
+            AbstractMap.SimpleEntry entry = new AbstractMap.SimpleEntry(key, targetVal);
+            list.add(entry);
+         }
+      }
+      if(list.isEmpty()){
+         System.out.println(String.format("cannot find matched entry for keys %s", possibleKeys));
+      }
+      return list;
+   }
+   public static boolean isExpect(Object expectVal, Object actualVal){
+      boolean b = false;
+      b = Objects.equals(expectVal, actualVal);
+      if(!b){
+         if(expectVal instanceof String && actualVal instanceof String){
+            //compare by regex
+            Pattern pattern = Pattern.compile(expectVal.toString().trim());
+            Matcher matcher = pattern.matcher(actualVal.toString());
+            b = matcher.matches();
+         }
+      }
+      return b;
+   }
+   public static Map<String, List<Map.Entry>> getSameGroupArrayPathMap(Map map){
+      Map<String, List<Map.Entry>> arrayPathGroupMap = new HashMap<>();
+      Set<Map.Entry> entries = map.entrySet();
+      for(Map.Entry entry : entries){
+         String key = entry.getKey().toString().trim();
+         boolean hasArray = false;
+         if(key.contains("[") && key.contains("]")){
+            hasArray = true;
+         }
+         if(!hasArray){
+            continue;
+         }
+         String arrayPath="";
+         if(key.endsWith("]")){
+            //remove last \\[\\d+\\]
+            arrayPath = key.replaceAll("\\[\\d+\\]$","");
+         }else{
+            //truncate to last char ]
+            arrayPath = key.substring(0,key.lastIndexOf("]")+1);
+         }
+         if(!arrayPathGroupMap.containsKey(arrayPath)){
+            List<Map.Entry> entryList = new ArrayList<>();
+            entryList.add(entry);
+            arrayPathGroupMap.put(arrayPath, entryList);
+         }else{
+            arrayPathGroupMap.get(arrayPath).add(entry);
+         }
+      }
+      return arrayPathGroupMap;
+   }
+   public static class EntryMatch{
+      Map.Entry srcEntry;
+      List<Map.Entry> targetEntries;
+      public static EntryMatch newInstance() {
+          return new EntryMatch();
+      }
+      public EntryMatch() {
+      }
+      public Map.Entry getSrcEntry() {
+         return srcEntry;
+      }
+      public void setSrcEntry(Map.Entry srcEntry) {
+         this.srcEntry = srcEntry;
+      }
+      public List<Map.Entry> getTargetEntries() {
+         return targetEntries;
+      }
+      public void setTargetEntries(List<Map.Entry> targetEntries) {
+         this.targetEntries = targetEntries;
+      }
+   }
+}
