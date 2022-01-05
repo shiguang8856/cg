@@ -1,0 +1,18 @@
+## Development configuration
+
+server:
+  port: 8082
+  servlet:
+    contextPath: /test
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    name: example
+  security:
+    enabled: false
+  mvc:
+    view:
+      prefix: /WEB-INF/jsp/
+      suffix: .jsp
