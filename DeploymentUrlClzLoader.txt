@@ -1,0 +1,115 @@
+package util;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.net.URLConnection;
+import java.security.cert.CertificateException;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+public class DeploymentUrlClzLoader {
+
+	/*
+	 * public DeploymentUrlClzLoader(URL[] urls) { super(urls); }
+	 */
+	URLClassLoader urlClassLoader;
+
+	public void init(URL urls[]) {
+		urlClassLoader = new URLClassLoader(urls, this.getClass().getClassLoader());
+	}
+
+	public Class<?> loadClass(URL urls[], String clzName) throws ClassNotFoundException, IOException {
+		if (urlClassLoader != null) {
+			Thread.currentThread().setContextClassLoader(urlClassLoader);
+			System.out.print("setting current thread class loader");
+		}
+		Class<?> c = urlClassLoader.loadClass(clzName);
+		// urlClassLoader.close();
+		return c;
+	}
+
+	public URLClassLoader getUrlClassLoader() {
+		return urlClassLoader;
+	}
+
+	public static byte[] trust(String urlStr) throws Exception {
+		// Create a trust manager that does not validate certificate chains
+		TrustManager[] trustAllCerts = new TrustManager[] {new X509TrustManager() {
+			public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+				return null;
+			}
+
+			@Override
+			public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType)
+					throws CertificateException {}
+
+			@Override
+			public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType)
+					throws CertificateException {}
+		}};
+		// Install the all-trusting trust manager
+		final SSLContext sc = SSLContext.getInstance("SSL");
+		sc.init(null, trustAllCerts, new java.security.SecureRandom());
+		HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+		// Create all-trusting host name verifier
+		HostnameVerifier allHostsValid = new HostnameVerifier() {
+			public boolean verify(String hostname, SSLSession session) {
+				return true;
+			}
+		};
+		// Install the all-trusting host verifier
+		HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
+		URL url = new URL(urlStr);
+		URLConnection con = url.openConnection();
+		byte[] by = readAllInputStream(con.getInputStream());
+		// con.getInputStream().close();
+		return by;
+	}
+
+	public static byte[] readAllInputStream(InputStream is) throws IOException {
+		int nRead;
+		ByteArrayOutputStream bao = new ByteArrayOutputStream();
+		byte[] data = new byte[16384];
+		while ((nRead = is.read(data, 0, data.length)) != -1) {
+			bao.write(data, 0, nRead);
+		}
+		byte bArray[] = bao.toByteArray();
+		return bArray;
+	}
+
+	public static void main(String args[]) {
+		try {
+			trust("https://localhost/runapp/jar/1");
+		} catch (Exception e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		String jkspath = "D:\\apache-tomcat-8.0.52-windows-x64\\apache-tomcat-8.0.52\\conf\\test.jks";
+		System.setProperty("javax.net.ssl.trustStore", jkspath);
+		System.setProperty("javax.net.ssl.trustStorePassword", "t");
+		DeploymentUrlClzLoader dcu = new DeploymentUrlClzLoader();
+		try {
+			URL urlForApp = new URL(
+					"https://localhost/runapp/jar/1?key=k&path=D%3A%5Capache-tomcat-8.0.52-windows-x64%5Capache-tomcat-8.0.52%5Cwebapps%5Cenc_lib%5Cws_enc.jar");
+			Class<?> clz = dcu.loadClass(new URL[] {urlForApp}, "codegen.eclipseRobot.UI");
+
+		} catch (MalformedURLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+}
