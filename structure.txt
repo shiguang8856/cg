@@ -1,5 +1,55 @@
-src\main\java\excelbb
-src\main\java\excelbb\controller
+Yes, JUnit parameterized tests can depend on dynamic data sets that are generated or retrieved at runtime. This can be useful when you need to test a function or method with different input values, but the input values are not known beforehand or may change over time.
 
-src\main\resources\
-src\main\webapp\WEB-INF\jsp
+To use dynamic data sets with JUnit parameterized tests, you can implement a method that generates or retrieves the data set at runtime, and use this method as the source for the parameterized test.
+
+Here's an example of how to use dynamic data sets in JUnit parameterized tests:
+
+```
+@RunWith(Parameterized.class)
+public class MyTest {
+
+    @Parameterized.Parameters(name = "Test {index}: A={0}, B={1}, C={2}")
+    public static Collection<Object[]> data() {
+        List<Object[]> testData = new ArrayList<>();
+
+        // Generate or retrieve the data set at runtime
+        List<MyData> dynamicData = getDynamicData();
+
+        // Convert the dynamic data to arrays of objects for use in the parameterized test
+        for (MyData data : dynamicData) {
+            testData.add(new Object[]{ data.getA(), data.getB(), data.getC() });
+        }
+
+        return testData;
+    }
+
+    @Parameter(0)
+    public int a;
+
+    @Parameter(1)
+    public String b;
+
+    @Parameter(2)
+    public String c;
+
+    @Test
+    public void myTestCase() {
+        // Your test case logic using the parameters a, b, and c
+        // For example:
+        System.out.println("Test case with A=" + a + ", B=" + b + ", C=" + c);
+        // ...
+    }
+
+    private static List<MyData> getDynamicData() {
+        // Generate or retrieve the data set at runtime
+        // For example:
+        List<MyData> data = new ArrayList<>();
+        data.add(new MyData(1, "man", "hongkong"));
+        data.add(new MyData(2, "woman", "shenzhen"));
+        data.add(new MyData(3, "man", "shenzhen"));
+        return data;
+    }
+}
+```
+
+In this example, the `data()` method generates the data set at runtime by calling the `getDynamicData()` method. The `getDynamicData()` method generates or retrieves the data set dynamically, and returns a list of custom `MyData` objects.
