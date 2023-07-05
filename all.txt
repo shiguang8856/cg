@@ -1,1 +1,41 @@
-start
+To perform parameterized testing using JUnit with the three parameters A, B, and C, you can use the `@Parameterized` and `@Parameters` annotations in your test class. Here is an example:
+
+```
+@RunWith(Parameterized.class)
+public class MyTest {
+
+    @Parameters(name = "Test {index}: A={0}, B={1}, C={2}")
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[][] {
+            { 1, "man", "hongkong" },
+            { 2, "woman", "shenzhen" },
+            { 3, "man", "shenzhen" }
+        });
+    }
+
+    @Parameter(0)
+    public int a;
+
+    @Parameter(1)
+    public String b;
+
+    @Parameter(2)
+    public String c;
+
+    @Test
+    public void myTestCase() {
+        // Your test case logic using the parameters a, b, and c
+        // For example:
+        System.out.println("Test case with A=" + a + ", B=" + b + ", C=" + c);
+        // ...
+    }
+}
+```
+
+In this example, the `data()` method returns a collection of arrays, where each array contains the values for the three parameters A, B, and C. The `@Parameters` annotation specifies the name of the test and the parameters to be used. The `@Parameter` annotations specify the positions of the parameters in the array.
+
+The `myTestCase()` method is a JUnit test case that uses the parameters A, B, and C to perform some test logic. In this example, it simply prints out the parameter values for each test case.
+
+When you run this test class, JUnit will automatically generate and execute three test cases, one for each set of parameter values specified in the `data()` method.
+
+You can modify the `data()` method to include more or different parameter values, and modify the `myTestCase()` method to perform your specific test logic.
